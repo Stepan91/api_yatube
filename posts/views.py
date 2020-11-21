@@ -14,32 +14,23 @@ class PostViewSet(viewsets.ModelViewSet):
     permission_classes = (permissions.IsAuthenticated,
                           IsOwnerOrReadOnly)
 
-    
-    def create(self, request):
-        serializer = PostSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save(author=request.user)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
+  
+    def perform_create(self, serializer):
+        serializer.save(author=self.request.user)
+
 
 class CommentViewSet(viewsets.ModelViewSet):
-    queryset = Comment.objects.all()
+    #queryset = Comment.objects.all()
     serializer_class = CommentSerializer
     permission_classes = [permissions.IsAuthenticated,
                           IsOwnerOrReadOnly]
 
 
-    def list(self, request, id=None):
-        queryset = Comment.objects.filter(post__id=id)
-        serializer = CommentSerializer(queryset, many=True)
-        return Response(serializer.data)
-    
-    def create(self, request, id=None):
-        post = get_object_or_404(Post, author=request.user, id=id)
-        serializer = CommentSerializer(data=request.data)
-        if serializer.is_valid():
-            post.comment = serializer.validated_data
-            serializer.save(author=request.user)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    def get_queryset(self):
+        post_id=self.kwargs['post_id']
+        return Comment.objects.filter(post__id=post_id)
+
+    # как тут в таком случае коммент привязывается к посту,
+    # если я удалил post.comment = serializer.validated_data?
+    def perform_create(self, serializer):
+        serializer.save(author=self.request.user)
