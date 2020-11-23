@@ -1,10 +1,9 @@
 from rest_framework import viewsets
 from rest_framework import permissions
 from .permissions import IsOwnerOrReadOnly
-from .models import Post, Comment
+from .models import Post
 from .serializers import PostSerializer, CommentSerializer
-from rest_framework.response import Response
-from rest_framework import status
+from django.http import Http404
 
 
 class PostViewSet(viewsets.ModelViewSet):
@@ -24,19 +23,18 @@ class CommentViewSet(viewsets.ModelViewSet):
                           IsOwnerOrReadOnly)
 
 
-    def get_queryset(self, *args, **kwargs):
-        post_id=self.kwargs['post_id']
-        post = Post.objects.get(id=post_id)
-        if post:
-            return post.comments
-        return Response(status=status.HTTP_404_NOT_FOUND)
+    def get_queryset(self):
+        try:
+            post_id=self.kwargs['post_id']
+            post = Post.objects.filter(id=post_id)
+            return post[0].comments
+        except Post.DoesNotExist:
+            raise Http404
 
-    # а зачем здесь проверка на наличие поста,
-    # ведь мы это сделали при определении queryset,
-    # который распространяется на все методы класса?
     def perform_create(self, serializer):
-        post_id=self.kwargs['post_id']
-        post = Post.objects.get(id=post_id)
-        if post:
+        try:
+            post_id=self.kwargs['post_id']
+            post_exists = Post.objects.filter(id=post_id).exists()
             serializer.save(author=self.request.user)
-        return Response(status=status.HTTP_404_NOT_FOUND)
+        except Post.DoesNotExist:
+            raise Http404
