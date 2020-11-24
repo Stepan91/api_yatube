@@ -3,7 +3,7 @@ from rest_framework import permissions
 from .permissions import IsOwnerOrReadOnly
 from .models import Post
 from .serializers import PostSerializer, CommentSerializer
-from django.http import Http404
+from django.shortcuts import get_object_or_404
 
 
 class PostViewSet(viewsets.ModelViewSet):
@@ -24,17 +24,13 @@ class CommentViewSet(viewsets.ModelViewSet):
 
 
     def get_queryset(self):
-        try:
-            post_id=self.kwargs['post_id']
-            post = Post.objects.filter(id=post_id)
-            return post[0].comments
-        except Post.DoesNotExist:
-            raise Http404
+        post_id=self.kwargs['post_id']
+        post = get_object_or_404(Post, id=post_id)
+        if post:
+            return post.comments
 
     def perform_create(self, serializer):
-        try:
-            post_id=self.kwargs['post_id']
-            post_exists = Post.objects.filter(id=post_id).exists()
+        post_id=self.kwargs['post_id']
+        post = get_object_or_404(Post, id=post_id)
+        if post:
             serializer.save(author=self.request.user)
-        except Post.DoesNotExist:
-            raise Http404
